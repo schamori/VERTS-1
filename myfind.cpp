@@ -2,51 +2,65 @@
 #include <iostream>
 #include <string.h>
 #include <list>
+#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <list>
+#include <string.h>
 
-using namespace std;
 int main(int argc, char *argv[])
 {
-    pid_t pid, wpid;
+
+    // Arugment passing
+    int opt;
     bool recursive = false;
-    bool sensetive = false;
-    string searchpath = "";
-    list<string> filenames;
-    for (int i = 0; i < argc; i++)
+    bool caseInsensitive = false;
+    std::list<std::string> filenames;
+
+    while ((opt = getopt(argc, argv, "Ri")) != -1)
     {
-        if (strcmp(argv[i], "-R") == 0)
+        switch (opt)
         {
+        case 'R':
             recursive = true;
-        }
-        else if (strcmp(argv[i], "-i") == 0)
-        {
-            sensetive = true;
-        }
-        else if (searchpath != "")
-        {
-            searchpath = argv[i];
-        }
-        else
-        {
-            filenames.push_back(argv[i]);
+            break;
+        case 'i':
+            caseInsensitive = true;
+            break;
+        default:
+            std::cout << "Usage: " << argv[0] << " [-R] [-i] searchpath filename1 [filename2] …[filenameN]" << std::endl;
+            return 1;
         }
     }
-    if (filenames.empty())
+
+    if (optind >= argc)
     {
-        cout << "Usage: ./myfind [-R] [-i] searchpath filename1 [filename2] …[filenameN]" << endl;
-        return 0;
+        std::cout << "Error: searchpath and filename(s) are required." << std::endl;
+        return 1;
     }
-    if (searchpath == "")
+    optind++;
+    std::string searchPath = argv[optind];
+    if (optind >= argc)
     {
-        cout << "Usage: ./myfind [-R] [-i] searchpath filename1 [filename2] …[filenameN]" << endl;
-        return 0;
+        std::cout << "Error: at least one filename is required." << std::endl;
+        return 1;
     }
-    for (const auto filename : filenames)
+
+    std::cout << "Recursive: " << (recursive ? "true" : "false") << std::endl;
+    std::cout << "Case Insensitive: " << (caseInsensitive ? "true" : "false") << std::endl;
+    std::cout << "Search Path: " << searchPath << std::endl;
+    while (optind < argc - 1)
     {
+        optind++;
+        std::string filename(argv[optind]);
+        std::cout << "Filename " << filename << std::endl;
+        filenames.push_back(filename);
+    }
+    pid_t pid;
+
+    for (const auto &filename : filenames)
+    {
+        std::cout << "Filename: " << filename << std::endl;
         pid = fork();
         switch (pid)
         {
@@ -58,5 +72,7 @@ int main(int argc, char *argv[])
             return 3;
         default: /* parent */
             printf("Parent process with PID %d\n", (int)getpid());
+            wiat
         }
     }
+}
