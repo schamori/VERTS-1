@@ -10,42 +10,82 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <cstring>
 
 void printFound(std::string fileName, std::string directoryName)
 {
     std::cout << (int)getpid() << ": " << fileName << ": " << directoryName << (directoryName.back() == '/' ? "" : "/") << fileName << std::endl;
 }
 
+bool isPathDirectory(char const *path)
+{
+    DIR *dir = NULL;
+    dir = opendir(path);
+    if (dir == NULL)
+        return false;
+
+    else
+        closedir(dir);
+    return true;
+}
+
 void search(char *directoryName, std::string fileName, bool caseInSensitive)
 {
-    DIR *dirp = opendir(directoryName);
-    if (dirp == NULL)
+    char mycwd[PATH_MAX];
+
+    if (getcwd(mycwd, PATH_MAX) == NULL)
     {
         perror("Failed to get current working directory");
         exit(1);
     }
-    struct dirent *direntp = readdir(dirp);
+    char relativeDirectory[PATH_MAX]; // Make sure the result array is large enough to hold the concatenated string
 
-    while (direntp != NULL)
+    std::strcpy(relativeDirectory, mycwd); // Copy the first string into the result
+    std::strcat(relativeDirectory, directoryName);
+
+    std::list<char *> directoryNames = {
+        directoryName, relativeDirectory};
+    std::cout << "Path: " << relativeDirectory;
+
+    for (const auto &directoryName : directoryNames)
     {
 
-        direntp = readdir(dirp);
-        char *currentName = direntp->d_name;
+        std::cout << directoryName;
 
-        if (caseInSensitive && strcasecmp(currentName, fileName.c_str()) == 0)
+        DIR *dirp = opendir(directoryName);
+        if (dirp == NULL)
         {
-            // Pass in the current Name because the search string could have upper cases
-            printFound(currentName, directoryName);
-            break;
+            perror("Failed to get current working directory");
+            exit(1);
         }
-        if (strcmp(currentName, fileName.c_str()) == 0)
+        struct dirent *direntp = readdir(dirp);
+
+        while (direntp != NULL)
         {
-            printFound(fileName, directoryName);
-            break;
+
+            direntp = readdir(dirp);
+            // Todo
+            // skip directories
+            // if isPathDirectory(direntp->d_name)
+            //   continue;
+            char *currentName = direntp->d_name;
+
+            if (caseInSensitive && strcasecmp(currentName, fileName.c_str()) == 0)
+            {
+                // Pass in the current Name because the search string could have upper cases
+                printFound(currentName, directoryName);
+                break;
+            }
+            if (strcmp(currentName, fileName.c_str()) == 0)
+            {
+                printFound(fileName, directoryName);
+                break;
+            }
         }
+        while ((closedir(dirp) == -1) && (errno == EINTR))
+            ;
     }
-    while ((closedir(dirp) == -1) && (errno == EINTR))
-        ;
 }
 
 int main(int argc, char *argv[])
@@ -90,16 +130,24 @@ int main(int argc, char *argv[])
     std::cout << "Recursive: " << (recursive ? "true" : "false") << std::endl;
     std::cout << "Case Insensitive: " << (caseInsensitive ? "true" : "false") << std::endl;
     std::cout << "Search Path: " << searchPath << std::endl;
+
     while (optind < argc)
     {
+        std::cout << argv[optind];
         std::string filename(argv[optind]);
         filenames.push_back(filename);
         optind++;
+    }
+    std::cout << "Test";
+    for (const auto &filename : filenames)
+    {
+        std::cout << filename;
     }
     pid_t pid;
 
     for (const auto &filename : filenames)
     {
+
         pid = fork();
         switch (pid)
         {
