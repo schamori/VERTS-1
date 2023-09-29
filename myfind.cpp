@@ -9,10 +9,52 @@
 #include <errno.h>
 #include <sys/wait.h>
 
+bool isPathDirectory(char const *path)
+{
+    DIR *dir = NULL;
+    dir = opendir(path);
+    if (dir == NULL)
+        return false;
+
+    else
+        closedir(dir);
+    return true;
+}
+
 void printFound(std::string fileName, std::string directoryName)
 {
     std::cout << (int)getpid() << ": " << fileName << ": " << directoryName << (directoryName.back() == '/' ? "" : "/") << fileName << std::endl;
 }
+
+char *joinPaths(const char *path1, const char *path2) {
+    // Calculate the total length needed for the new path
+    size_t len1 = strlen(path1);
+    size_t len2 = strlen(path2);
+
+    char *result = (char *)malloc(len1 + 1 + len2 + 1);
+
+    if (result == NULL) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(result, path1);
+
+    if (path1[len1 - 1] != '/') {
+        strcat(result, "/");
+    }
+
+    // Remove any leading '/' character from the second path
+    while (*path2 == '/') {
+        path2++;
+    }
+
+    // Concatenate the second path
+    strcat(result, path2);
+
+    return result;
+}
+
 
 void search(char *directoryName, std::string fileName, bool caseInSensitive)
 {
@@ -28,7 +70,16 @@ void search(char *directoryName, std::string fileName, bool caseInSensitive)
     {
 
         direntp = readdir(dirp);
+        
         char *currentName = direntp->d_name;
+        char *joinedPath = joinPaths(directoryName, currentName);
+        if (isPathDirectory(joinedPath)){
+            free(joinedPath);
+
+            continue;
+        }
+        free(joinedPath);
+
 
         if (caseInSensitive && strcasecmp(currentName, fileName.c_str()) == 0)
         {
@@ -45,17 +96,7 @@ void search(char *directoryName, std::string fileName, bool caseInSensitive)
     while ((closedir(dirp) == -1) && (errno == EINTR))
         ;
 }
-bool isPathDirectory(char const *path)
-{
-    DIR *dir = NULL;
-    dir = opendir(path);
-    if (dir == NULL)
-        return false;
 
-    else
-        closedir(dir);
-    return true;
-}
 
 int main(int argc, char *argv[])
 {
